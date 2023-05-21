@@ -138,24 +138,30 @@ void addStaticTransformTree(rosbag::Bag &output_bag, float bagStartTimestamp) {
 
 void savePointclouds(rosbag::Bag &output_bag, const std::string &topicName, const std::string &frameName,
                      const std::deque<pcl::PointXYZINormal> &points, float pointcloudLen, float scale = 1.0f) {
+    double time_beg = getTimestamp(points.front());
+    double time_end = getTimestamp(points.back());
+
     float startTimestampPointCloud = getTimestamp(points.front());
     pcl::PointCloud<mine_dataset::PointXYZIRT> pc_pcl;
     for (auto &p: points) {
-        float delta = getTimestamp(p) - startTimestampPointCloud;
-        mine_dataset::PointXYZIRT p_new;
-        p_new.getArray3fMap() = scale * p.getArray3fMap();
-        p_new.intensity = p.intensity;
-        p_new.ring = getRing(p);
-        p_new.time = getTimestamp(p);
-        pc_pcl.push_back(p_new);
-        if (delta > pointcloudLen) {
-            startTimestampPointCloud = getTimestamp(p);
-            sensor_msgs::PointCloud2 pc_msg;
-            pcl::toROSMsg(pc_pcl, pc_msg);
-            pc_msg.header.stamp = ros::Time(startTimestampPointCloud);
-            pc_msg.header.frame_id = frameName;
-            output_bag.write(topicName, ros::Time(startTimestampPointCloud), pc_msg);
-            pc_pcl.clear();
+        auto timestamp = getTimestamp(p);
+        if (timestamp > time_beg && timestamp < time_end) {
+            float delta = getTimestamp(p) - startTimestampPointCloud;
+            mine_dataset::PointXYZIRT p_new;
+            p_new.getArray3fMap() = scale * p.getArray3fMap();
+            p_new.intensity = p.intensity;
+            p_new.ring = getRing(p);
+            p_new.time = getTimestamp(p);
+            pc_pcl.push_back(p_new);
+            if (delta > pointcloudLen) {
+                startTimestampPointCloud = getTimestamp(p);
+                sensor_msgs::PointCloud2 pc_msg;
+                pcl::toROSMsg(pc_pcl, pc_msg);
+                pc_msg.header.stamp = ros::Time(startTimestampPointCloud);
+                pc_msg.header.frame_id = frameName;
+                output_bag.write(topicName, ros::Time(startTimestampPointCloud), pc_msg);
+                pc_pcl.clear();
+            }
         }
     }
 }
@@ -265,6 +271,10 @@ int main(int argc, char **argv) {
     std::cout << "velodyne_rot_deque.size(): " << velodyne_rot_deque.size() << std::endl;
     std::cout << "velodyne_rot_deque.timestamps : " << getTimestamp(velodyne_rot_deque.front()) << " "
               << getTimestamp(velodyne_rot_deque.back()) << std::endl;
+    std::cout << "velodyne_stationary.timestamps : " << getTimestamp(velodyne_stationary.front()) << " "
+              << getTimestamp(velodyne_stationary.back()) << std::endl;
+    std::cout << "livox.timestamps : " << getTimestamp(livox.front()) << " "
+              << getTimestamp(livox.back()) << std::endl;
     const float bagStartTimestamp = getTimestamp(velodyne_rot_deque.front());
 
     // create static tf
