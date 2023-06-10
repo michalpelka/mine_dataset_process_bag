@@ -107,5 +107,10 @@ int main(int argc, char **argv) {
         tf_msg.transform = toRosMsg(pose);
         output_bag.write("/tf", ros::Time(timestamp - 0.001f), tf_msgs);
     }
+    std::ofstream depth("/tmp/depth.csv");
+    for (auto &[timestamp, pose]: trajectory_nodes)
+    {
+        depth << timestamp << " " << pose.translation().z() << std::endl;
+    }
     return 0;
 }

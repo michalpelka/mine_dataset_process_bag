@@ -53,7 +53,7 @@ geometry_msgs::Transform toRosMsg(const Eigen::Affine3f &mat) {
 
 
 Eigen::Affine3f calibMatrixVLP32C() {
-    Eigen::Matrix4f vlp32c;
+   Eigen::Matrix4f vlp32c;
     //cad
     vlp32c << 0.0000, 0.6428, 0.7660, 0.2061,
             0.7049, -0.5433, 0.4559, 0.0325,
@@ -124,7 +124,7 @@ void addStaticTransformTree(rosbag::Bag &output_bag, float bagStartTimestamp) {
     tf_msgs.transforms[4].header.stamp = ros::Time(bagStartTimestamp);
     tf_msgs.transforms[4].header.frame_id = "base_link";
     tf_msgs.transforms[4].child_frame_id = "imu";
-    tf_msgs.transforms[4].transform = toRosMsg(Eigen::Affine3f::Identity());
+    tf_msgs.transforms[4].transform = toRosMsg(calibMatrixIMU());
 
     boost::shared_ptr<ros::M_string> header(new ros::M_string);
     (*header)["callerid"] = "/static_transform_publisher";
@@ -172,9 +172,6 @@ int main(int argc, char **argv) {
         std::cout << "Usage: " << argv[0] << " <input_bag> <output_bag> --add_data --add_static_tf \n";
         std::cout << " Options are:\n";
         std::cout << "  --pc_len <length of one chunk of pointcloud> (default 0.1 s)" << std::endl;
-        std::cout << "  --calib <calib source CAD or PHD> (default CAD)" << std::endl;
-
-        std::cout << "  --add_data <add data to output bag>" << std::endl;
         std::cout << "  --add_static_tf <add static tf to output bag>" << std::endl;
         std::cout << "  --append allow to append to rosbag" << std::endl;
         return 1;
@@ -268,7 +265,10 @@ int main(int argc, char **argv) {
             }
         }
     }
-    std::cout << "velodyne_rot_deque.size(): " << velodyne_rot_deque.size() << std::endl;
+    std::cout << "velodyne_rot_deque.size(): " << velodyne_rot_deque.size() / 1e6 << std::endl;
+    std::cout << "velodyne_stationary.size(): " << velodyne_stationary.size()/ 1e6 << std::endl;
+    std::cout << "livox.size(): " << livox.size()/ 1e6 << std::endl;
+
     std::cout << "velodyne_rot_deque.timestamps : " << getTimestamp(velodyne_rot_deque.front()) << " "
               << getTimestamp(velodyne_rot_deque.back()) << std::endl;
     std::cout << "velodyne_stationary.timestamps : " << getTimestamp(velodyne_stationary.front()) << " "
@@ -276,6 +276,7 @@ int main(int argc, char **argv) {
     std::cout << "livox.timestamps : " << getTimestamp(livox.front()) << " "
               << getTimestamp(livox.back()) << std::endl;
     const float bagStartTimestamp = getTimestamp(velodyne_rot_deque.front());
+
 
     // create static tf
     if (add_static_tf) {
@@ -294,7 +295,7 @@ int main(int argc, char **argv) {
         tf_msg.header.stamp = ros::Time(timestamp);
         tf_msg.header.frame_id = "velodyne_rot_base";
         tf_msg.child_frame_id = "velodyne_rot_angular_offset";
-        Eigen::Quaternionf angularOffset(Eigen::AngleAxisf(angular_encoder_offset, Eigen::Vector3f::UnitZ()));
+        Eigen::Quaternionf angularOffset(Eigen::AngleAxisf(p.second, Eigen::Vector3f::UnitZ()));
         tf_msg.transform.rotation = toRosMsg(angularOffset);
         output_bag.write("/tf", ros::Time(timestamp - 0.001f), tf_msgs);
     }
